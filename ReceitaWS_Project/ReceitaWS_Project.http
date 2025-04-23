@@ -1,0 +1,5 @@
+@baseUrl = http://localhost:5280
+
+### Teste de Consulta de CNPJ
+GET {{baseUrl}}/api/receita/cnpj/12345678000195
+Accept: application/json
