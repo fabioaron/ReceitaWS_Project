@@ -1,57 +1,99 @@
-﻿using System;
-using System.Net;
-using System.Net.Http;
-using System.Text.Json;
+﻿using Microsoft.AspNetCore.Mvc;
+using ReceitaWS_Project.DTOs;
+using ReceitaWS_Project.Services;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using ReceitaWS_Project;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/empresas")]
 public class EmpresaController : ControllerBase
 {
-    private readonly HttpClient _httpClient;
+	private readonly EmpresaService _empresaService;
 
-    public EmpresaController(IHttpClientFactory httpClientFactory)
-    {
-        _httpClient = httpClientFactory.CreateClient();
-    }
+	public EmpresaController(EmpresaService empresaService)
+	{
+		_empresaService = empresaService; // Inicializando o serviço
+	}
 
-    [HttpGet("{cnpj}")]
-    public async Task<IActionResult> ObterDados(string cnpj)
-    {
-        // Validação básica para garantir que o CNPJ tenha 14 dígitos numéricos
-        if (string.IsNullOrWhiteSpace(cnpj) || cnpj.Length != 14 || !Regex.IsMatch(cnpj, @"^\d+$"))
-        {
-            return BadRequest("CNPJ inválido. Use 14 dígitos numéricos.");
-        }
+	[HttpPost("register")]
+	public IActionResult RegistrarEmpresa([FromBody] EmpresaMongo empresaDto)
+	{
+		// Validação básica do CNPJ
+		if (string.IsNullOrWhiteSpace(empresaDto.Cnpj) || empresaDto.Cnpj.Length != 14 || !Regex.IsMatch(empresaDto.Cnpj, @"^\d+$"))
+		{
+			return BadRequest(new { Message = "CNPJ inválido. Certifique-se de fornecer 14 dígitos numéricos." });
+		}
 
-        // URL construída com base no CNPJ informado
-        var url = $"https://receitaws.com.br/v1/cnpj/{cnpj}";
-        var response = await _httpClient.GetAsync(url);
+		try
+		{
+			// Registrar empresa usando o serviço
+			var result = _empresaService.RegistrarEmpresa(
+				empresaDto.Nome,
+				empresaDto.NomeFantasia,
+				empresaDto.Cnpj,
+				empresaDto.Situacao,
+				empresaDto.Abertura,
+				empresaDto.Tipo,
+				empresaDto.NaturezaJuridica,
+				empresaDto.Logradouro,
+				empresaDto.Numero,
+				empresaDto.Complemento,
+				empresaDto.Bairro,
+				empresaDto.Municipio,
+				empresaDto.Uf,
+				empresaDto.CEP
+			);
 
-        if (response.IsSuccessStatusCode)
-        {
-            // Lê o conteúdo da resposta (JSON) e desserializa para a classe Empresa, se essa classe corresponder
-            var jsonContent = await response.Content.ReadAsStringAsync();
+			if (result == null)
+			{
+				return Conflict(new { Message = "Empresa já registrada no banco de dados." });
+			}
 
-            // Caso possua a classe Empresa definida, desserialize-a:
-            // Certifique-se de que os nomes dos atributos da classe Empresa correspondem aos do JSON recebido.
-            var empresa = JsonSerializer.Deserialize<EmpresaDto>(jsonContent, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            return Ok(empresa);
+			return Ok(new { Message = "Empresa registrada com sucesso!", Empresa = result });
+		}
+		catch (Exception ex)
+		{
+			return StatusCode(500, new { Error = "Erro ao registrar empresa.", Detalhes = ex.Message });
+		}
+	}
 
-            // Se preferir retornar a resposta como objeto dinâmico, poderia usar:
-            // var result = JsonSerializer.Deserialize<dynamic>(jsonContent);
-            // return Ok(result);
-        }
-        else
-        {
-            // Se a chamada externa falhar, retorna o respectivo status code e uma mensagem de erro
-            return StatusCode((int)response.StatusCode, "Erro ao obter dados da API ReceitaWS.");
-        }
-    }
+	[HttpGet]
+	public IActionResult GetEmpresas()
+	{
+		try
+		{
+			// Buscar todas as empresas usando o serviço
+			var empresas = _empresaService.ListarEmpresas();
+			return Ok(empresas);
+		}
+		catch (Exception ex)
+		{
+			return StatusCode(500, new { Error = "Erro ao buscar empresas.", Detalhes = ex.Message });
+		}
+	}
+
+	[HttpGet("{cnpj}")]
+	public IActionResult ProcurarEmpresa(string cnpj)
+	{
+		// Validação básica do CNPJ
+		if (string.IsNullOrWhiteSpace(cnpj) || cnpj.Length != 14 || !Regex.IsMatch(cnpj, @"^\d+$"))
+		{
+			return BadRequest(new { Message = "CNPJ inválido. Certifique-se de fornecer 14 dígitos numéricos." });
+		}
+
+		try
+		{
+			// Procurar empresa pelo CNPJ usando o serviço
+			var empresa = _empresaService.ProcurarEmpresa(cnpj);
+			if (empresa == null)
+			{
+				return NotFound(new { Message = "Empresa não encontrada." });
+			}
+
+			return Ok(empresa);
+		}
+		catch (Exception ex)
+		{
+			return StatusCode(500, new { Error = "Erro ao buscar empresa.", Detalhes = ex.Message });
+		}
+	}
 }
