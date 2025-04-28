@@ -92,21 +92,8 @@ Body (JSON):
 
 json
 {
-  "nome": "Empresa Exemplo",
-  "nomeFantasia": "Fantasia Exemplo",
-  "cnpj": "12345678000199",
-  "situacao": "Ativa",
-  "abertura": "2023-01-01",
-  "tipo": "Matriz",
-  "naturezaJuridica": "Sociedade Limitada",
-  "logradouro": "Rua Exemplo",
-  "numero": "123",
-  "complemento": "Sala 45",
-  "bairro": "Centro",
-  "municipio": "São Paulo",
-  "uf": "SP",
-  "cep": "01001001"
-}
+  "cnpj": "12345678000199"
+  }
 Listar Empresas:
 
 GET /api/empresas
